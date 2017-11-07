@@ -1,4 +1,4 @@
-ruleset fanController {
+ruleset io.picolabs.fanController {
   meta {
 
     name "fan_controller"
@@ -6,9 +6,9 @@ ruleset fanController {
     //description "General rules for Fan control"
 
     //use module wrangler
-    
+
     logging on
-    
+
     shares fan_state, __testing
     provides fan_state, __testing
   }
@@ -16,7 +16,7 @@ ruleset fanController {
   global {
 
 __testing = { "queries": [ { "name": "fan_state" } ],
-                  "events": [ 
+                  "events": [
             { "domain": "fan", "type": "new_status",
                                 "attrs": ["state"] },
             { "domain": "fan", "type": "set_pin",
@@ -35,7 +35,7 @@ __testing = { "queries": [ { "name": "fan_state" } ],
   rule fanOn {
     select when fan new_status state re#on#
     pre {}
-      gpio:digitalWrite(get_pin(),1) 
+      gpio:digitalWrite(get_pin(),1)
     always {
       null.klog("turning on fan at pin " + get_pin());
     }
@@ -44,7 +44,7 @@ __testing = { "queries": [ { "name": "fan_state" } ],
   rule fanOff {
     select when fan new_status state re#off#
     pre {}
-      gpio:digitalWrite(get_pin(),0) 
+      gpio:digitalWrite(get_pin(),0)
     always {
       null.klog("turning off fan at pin " + get_pin());
     }
