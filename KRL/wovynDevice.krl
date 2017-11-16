@@ -3,7 +3,7 @@ ruleset io.picolabs.wovyn_device {
 
     name "wovyn_device"
     author "PJW"
-    //description "General rules for ESProto system devices"
+    //description "General rules for wovyn system devices"
 
     //use module wrangler
     use module Subscriptions
@@ -17,8 +17,56 @@ ruleset io.picolabs.wovyn_device {
   global {
 
     __testing = { "queries": [ { "name": "__testing" } ],
-                  "events": [ { "domain": "esproto", "type": "new_threshold",
+                  "events": [ { "domain": "wovyn", "type": "new_threshold",
                                 "attrs": [ "threshold_type", "upper_limit", "lower_limit" ] } ] }
+    //Manifold Discovery Components
+    app = {"name":"journalling","version":"0.0"/* img: , pre: , ..*/};
+    bindings = function(){
+      {
+        "chartType": "LineChart",
+        "rows": getRows(),
+        "columns": getColumns(),
+        "width": "100%",
+        "height": "100px",
+        "options": getOptions()
+      };
+    }
+
+    getRows = function(){
+      [
+        [1, 1],
+        [2, 2],
+        [3, 3],
+        [4, 5],
+        [5, 6],
+        [8, 9]
+      ]
+    }
+
+    getColumns = function(){
+      [
+        {
+          "label":"Time",
+          "type":"number",
+          "p":{}
+        },
+        {
+          "label":"Weight",
+          "type":"number"
+        }
+      ]
+    }
+
+    getOptions = function(){
+      {
+        "title": "Last 10 Temp Readings",
+        "hAxis": { "title": "Time" },
+        "vAxis": { "title": "Degrees ℉" },
+        "legend": "none"
+      }
+    }
+
+
 
     // public
     thresholds = function(threshold_type) {
@@ -56,12 +104,15 @@ ruleset io.picolabs.wovyn_device {
         //subs = raw_subs[0];
         raw_subs.klog("Subscriptions: ")
       };
-  }
+  }//end global
+
+
+  rule discovery { select when manifold apps send_directive("app discovered...", {"app": app, "rid": meta:rid, "bindings": bindings()} ); }
 
 
   // rule to save thresholds
   rule save_threshold {
-    select when esproto new_threshold
+    select when wovyn new_threshold
     pre {
       threshold_type = event:attr("threshold_type");
       threshold_value = {"limits": {"upper": event:attr("upper_limit"),
@@ -76,9 +127,9 @@ ruleset io.picolabs.wovyn_device {
   }
 
   rule check_threshold {
-    select when esproto new_temperature_reading
-             or esproto new_humidity_reading
-             or esproto new_pressure_reading
+    select when wovyn new_temperature_reading
+             or wovyn new_humidity_reading
+             or wovyn new_pressure_reading
     foreach event:attr("readings").klog("The readings: ") setting (reading)
       pre {
         event_type = event:type().klog("Event type: ");
@@ -103,7 +154,7 @@ ruleset io.picolabs.wovyn_device {
       }
       if(  under || over ) then noop();
       fired {
-        raise esproto event "threshold_violation"
+        raise wovyn event "threshold_violation"
           attributes { "reading": reading.encode(),
                        "threshold": under => lower_threshold | upper_threshold,
                        "threshold_bound": under => "lower" | "upper"
@@ -116,18 +167,18 @@ ruleset io.picolabs.wovyn_device {
   // route events to all collections I'm a member of
   // change eventex to expand routed events.
   rule route_to_collections {
-    select when esproto threshold_violation
-             or esproto battery_level_low
+    select when wovyn threshold_violation
+             or wovyn battery_level_low
     foreach Ecis() setting (eci)
       pre {
       }
-      event:send({"eci": eci,"eid" : random:integer(100,2000) , "domain": "esproto", "type": event:type(), "attrs": event:attrs()})
+      event:send({"eci": eci,"eid" : random:integer(100,2000) , "domain": "wovyn", "type": event:type(), "attrs": event:attrs()})
   }
 
 
   rule auto_approve_pending_subscriptions {
     select when wrangler inbound_pending_subscription_added
-           //name_space re/esproto-meta/gi
+           //name_space re/wovyn-meta/gi
     pre{
       attributes = event:attrs().klog("subcription attributes :");
       subscriptions = Subscriptions:getSubscriptions().klog("Subscriptions:subscriptions(): ")

@@ -1,8 +1,8 @@
-ruleset wovyn_router {
+ruleset io.picolabs.wovyn_router {
   meta {
     name "wovyn_router"
     author "PJW"
-    //description "Event Router for ESProto system"
+    //description "Event Router for wovyn system"
 
     logging on
 
@@ -77,7 +77,7 @@ ruleset wovyn_router {
     if (sensor_data{"healthPercent"}) < healthy_battery_level then noop()
     fired {
       sensor_data{"healthPercent"}.klog("Battery is low @ ");
-      raise esproto event "battery_level_low"
+      raise wovyn event "battery_level_low"
         attributes {"sensor_id": sensor_id,
                     "properties": sensor_properties,
                     "health_percent": sensor_data{"healthPercent"},
@@ -92,21 +92,23 @@ ruleset wovyn_router {
     select when wovynEmitter thingHeartbeat
     foreach sensorData(["data"]) setting (sensor_readings, sensor_type)
       pre {
-  event_name = "new_" + sensor_type + "_reading".klog("Event ");
-
-       }
-       always {
-   raise esproto event event_name attributes
-     {"readings":  sensor_readings,
-      "sensor_id": event:attr("emitterGUID"),
-        "timestamp": time:now()
-     }.klog("raising esproto event "+event_name+"with attrs: ");
-       }
+        event_name = "new_" + sensor_type + "_reading".klog("Event ");
+      }
+      always {
+        ent:debug := event_name;
+        ent:debug2 := sensor_readings;
+        raise wovyn event event_name attributes
+          { "readings":  sensor_readings,
+            "sensor_id": event:attr("emitterGUID"),
+            "timestamp": time:now()
+          }.klog("raising wovyn event "+event_name+"with attrs: ");
+        ent:debug4 := "Got heres!!";
+      }
   }
 
   // catch and store humidity
   rule catch_humidity {
-    select when esproto new_humidity_reading
+    select when wovyn new_humidity_reading
     pre {
       humidityData = event:attr("readings");
     }
@@ -117,18 +119,19 @@ ruleset wovyn_router {
 
   // catch and store temperature
   rule catch_temperature {
-    select when esproto new_temperature_reading
+    select when wovyn new_temperature_reading
     pre {
       temperatureData = event:attr("readings");
     }
     always {
+      ent:debug3 := "Got here";
       ent:lastTemperature := temperatureData;
     }
   }
 
   // catch and store pressure
   rule catch_pressure {
-    select when esproto new_pressure_reading
+    select when wovyn new_pressure_reading
     pre {
       pressureData = event:attr("readings");
     }
